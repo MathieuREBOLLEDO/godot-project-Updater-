@@ -21,6 +21,15 @@ What it does
 
 Without a window: UpdateProject.bat cli
 
+Self-update
+- At launch, the tool compares its installed commit (tools/updater/version.cfg,
+  commit=) with the HEAD of its own repository (source=). If it changed, it
+  copies the new scripts and UpdateProject.bat, then relaunches itself.
+- To publish a new version: edit this folder, commit, push. Every project
+  picks it up the next time its updater is launched.
+- Offline: the installed version runs. auto_update=false in updater.cfg
+  keeps a project on its current version.
+
 Install in a project (master copy = this folder):
   powershell -ExecutionPolicy Bypass -File install.ps1 <project folder> [...]
 Then commit UpdateProject.bat and tools/updater/ with the project.

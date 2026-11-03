@@ -43,3 +43,11 @@ Files (tools/updater/)
   widgets.ps1    themed controls, background
   window.ps1     the window
   config.ps1     updater.cfg (remote_url, language)
+
+Tests
+-----
+powershell -File tests\run_tests.ps1   (sortie 0 si tout passe)
+Sans reseau ni fenetre : textes, updater.cfg, version.cfg, arguments git, et
+la mise a jour sur des depots temporaires (clone existant, branche divergee,
+autre branche, dossier sans git, sans remote). Le git global et les fichiers
+de l'outil ne sont pas touches.

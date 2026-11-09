@@ -30,7 +30,8 @@ $script:Git = Find-Git
 # Git isolé : identité de test, pas de réglages système ni de l'utilisateur.
 $env:GIT_CONFIG_GLOBAL = Join-Path $temp 'gitconfig'
 $env:GIT_CONFIG_NOSYSTEM = '1'
-[IO.File]::WriteAllLines($env:GIT_CONFIG_GLOBAL, @('[user]', '  name = Updater Test', '  email = test@example.invalid', '[init]', '  defaultBranch = main'))
+# protocol.file : sous-modules depuis des dépôts locaux (les vrais sont en https).
+[IO.File]::WriteAllLines($env:GIT_CONFIG_GLOBAL, @('[user]', '  name = Updater Test', '  email = test@example.invalid', '[init]', '  defaultBranch = main', '[protocol "file"]', '  allow = always'))
 
 # git dans un dossier (hors de l'outil, pour préparer les dépôts).
 function G([string]$dir) {
@@ -125,6 +126,26 @@ try {
 	G $author checkout -q main | Out-Null
 	Run-Update $project | Out-Null
 	Check ((G $project rev-parse feature) -eq (G $author rev-parse feature)) "not checked out branch moved forward"
+
+	Write-Host "`n-- new add-on (submodule) installed"
+	# Comme un addon ajouté à un jeu (ex. addons/settings_menu) : le projet
+	# d'un autre poste le reçoit à la mise à jour suivante.
+	$addonRemote = Join-Path $temp 'addon.git'
+	$addonAuthor = Join-Path $temp 'addon'
+	& $script:Git init -q --bare $addonRemote
+	& $script:Git clone -q $addonRemote $addonAuthor 2>&1 | Out-Null
+	Commit $addonAuthor 'plugin.cfg' '[plugin]'
+	G $addonAuthor push -q origin main | Out-Null
+	$fresh = Join-Path $temp 'fresh'
+	& $script:Git clone -q $remote $fresh 2>&1 | Out-Null
+	G $author submodule add -q $addonRemote 'addons/settings_menu' | Out-Null
+	G $author commit -q -m 'add settings menu' | Out-Null
+	G $author push -q origin main | Out-Null
+	Check (Run-Update $fresh) "update with a new add-on"
+	Check (Test-Path (Join-Path $fresh 'addons\settings_menu\plugin.cfg')) "add-on files installed"
+	Check (($script:Logged | Where-Object { $_ -like 'good|*settings_menu*' }).Count -gt 0) "installation reported"
+	Run-Update $fresh | Out-Null
+	Check (($script:Logged | Where-Object { $_ -like 'bad|*' }).Count -eq 0) "second update: nothing to report"
 
 	Write-Host "`n-- folder without git (downloaded ZIP)"
 	$zip = Join-Path $temp 'zip'
